@@ -2,8 +2,8 @@ package repository
 
 import (
 	"github.com/iamrosada/microservice-goland/user-service/internal/user/entity"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type UserRepositoryPostgres struct {
