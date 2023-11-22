@@ -3,16 +3,14 @@ package usecase
 import "github.com/iamrosada/microservice-goland/user-service/internal/user/entity"
 
 type UpdateUserInputDto struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-
+	ID    string `json:"id"`
+	Name  string `json:"name"`
 	Email string `json:"email"`
 }
 
 type UpdateUserOutputDto struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-
+	ID    string `json:"id"`
+	Name  string `json:"name"`
 	Email string `json:"email"`
 }
 
@@ -42,9 +40,8 @@ func (u *UpdateUserUseCase) Execute(input UpdateUserInputDto) (*UpdateUserOutput
 	}
 
 	return &UpdateUserOutputDto{
-		ID:   existingUser.ID,
-		Name: existingUser.Name,
-
+		ID:    existingUser.ID,
+		Name:  existingUser.Name,
 		Email: existingUser.Email,
 	}, nil
 }
