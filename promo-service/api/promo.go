@@ -41,42 +41,42 @@ func (p *PromoHandlers) SetupRouter(router *gin.Engine) {
 	// Uncommented routes
 	router.POST("/promo/create", p.CreatePromoHandler)
 	router.POST("/promo/:id/codes", p.PromoCodeHandler)
-	// router.POST("/promo/:id/apply_users", p.ApplyPromoUsersHandler)
+	router.POST("/promo/:id/apply_users", p.ApplyPromoUsersHandler)
 	// router.GET("/promo/:id/users", p.GetPromoUsersHandler)
 
-	// Active route with your ApplyPromoAllHandler
-	router.POST("/promo/:id/apply_all", p.ApplyPromoAllHandler)
+	// router.POST("/promo/:id/apply_all", p.ApplyPromoAllHandler)
 }
 
 func fetchUsersForPromo(url string) (map[string][]uint, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to perform GET request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Failed to fetch users for promo, status: %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("Failed to fetch users for promo. Status: %d, Body: %s", resp.StatusCode, body)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to read response body: %v", err)
 	}
 
 	var result map[string][]uint
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to unmarshal JSON: %v", err)
 	}
 
 	return result, nil
 }
 
-func (p *PromoHandlers) ApplyPromoAllHandler(c *gin.Context) {
+func (p *PromoHandlers) ApplyPromoUsersHandler(c *gin.Context) {
 	id := c.Param("id")
-	uInt32Val, err := strconv.ParseUint(id, 10, 32)
+	promoID, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid promotion ID"})
 		return
 	}
 
@@ -85,46 +85,48 @@ func (p *PromoHandlers) ApplyPromoAllHandler(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
 		return
 	}
 
-	// Call the user microservice to apply the promo to all users
-	url := fmt.Sprintf("%s/users/promo_type/%d/available", userMicroserviceURL, uInt32Val)
+	// Call the user microservice to apply the promo to specific users
+	url := fmt.Sprintf("%s/api/users/promo_type/%d/available", userMicroserviceURL, promoID)
 	usersIDs, err := fetchUsersForPromo(url)
-
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("Error fetching users for promo: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users for promo"})
 		return
 	}
 
 	for _, userID := range usersIDs["users_id"] {
 		randomNumber := rand.Intn(9) + 1
 		appliedPromotion := entity.UserPromotion{
-			PromotionID: uint(uInt32Val),
+			PromotionID: uint(promoID),
 			UserID:      uint(userID),
 			Type:        int(randomNumber),
 		}
 
 		// Save the applied promotion to the user microservice
-		saveURL := fmt.Sprintf("%s/api/users/promo/%d/apply", userMicroserviceURL, uInt32Val)
+		saveURL := fmt.Sprintf("%s/api/users/promo/%d/apply", userMicroserviceURL, promoID)
 		reqBody, _ := json.Marshal(appliedPromotion)
 		resp, err := http.Post(saveURL, "application/json", bytes.NewBuffer(reqBody))
 
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			log.Printf("Error saving applied promotion: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save applied promotion"})
 			return
 		}
 
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
+			log.Printf("Unexpected status code when saving applied promotion: %d", resp.StatusCode)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save applied promotion"})
 			return
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Promo applied to all users"})
+	c.JSON(http.StatusOK, gin.H{"message": "Promo applied to specified users"})
 }
 
 func (p *PromoHandlers) PromoCodeHandler(c *gin.Context) {
