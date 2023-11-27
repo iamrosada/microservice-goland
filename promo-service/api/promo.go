@@ -39,7 +39,7 @@ func (p *PromoHandlers) SetupRouter(router *gin.Engine) {
 	router.POST("/promo/:id/apply_users", p.ApplyPromoUsersHandler)
 	// router.GET("/promo/:id/users", p.GetPromoUsersHandler)
 
-	// router.POST("/promo/:id/apply_all", p.ApplyPromoAllHandler)
+	router.POST("/promo/:id/apply_all", p.ApplyPromoToAllUsersHandler)
 }
 
 func (p *PromoHandlers) ApplyPromoUsersHandler(c *gin.Context) {
@@ -168,4 +168,87 @@ func (p *PromoHandlers) CreatePromoHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Promotion created successfully"})
+}
+func (p *PromoHandlers) ApplyPromoToAllUsersHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	promoID, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid promotion ID"})
+		return
+	}
+
+	// Получаем информацию о промо-акции по ID
+	_, err = p.PromoUseCase.GetPromotionByID(uint(promoID))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid promotion ID"})
+		return
+	}
+
+	// Получаем список пользователей из микросервиса пользователей
+	users, err := p.fetchUsersFromUserMicroservice("http://localhost:8000/api/users")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users from user microservice"})
+		return
+	}
+
+	// Создаем массив с идентификаторами пользователей
+	var userIDs []int
+	for _, user := range users {
+		userIDs = append(userIDs, int(user.ID))
+	}
+
+	// Создаем тело запроса с массивом идентификаторов пользователей
+	requestBody := map[string]interface{}{"user_ids": userIDs}
+
+	// Преобразуем тело запроса в формат JSON
+	reqBody, err := json.Marshal(requestBody)
+	if err != nil {
+		log.Printf("Error converting request to JSON: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert request to JSON"})
+		return
+	}
+
+	// Отправляем запрос на применение промо-акции ко всем пользователям
+	url := fmt.Sprintf("http://localhost:8000/api/users/promo/%d/apply", promoID)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(reqBody))
+	if err != nil {
+		log.Printf("Error sending request to user microservice: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send request to user microservice"})
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Unexpected status code when sending request: %d", resp.StatusCode)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply promotion to all users"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "New promotion applied to all users"})
+}
+
+// Функция для выполнения запроса к микросервису пользователей
+func (p *PromoHandlers) fetchUsersFromUserMicroservice(url string) ([]entity.User, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Failed to fetch users, status: %d", resp.StatusCode)
+	}
+
+	var response struct {
+		Users []entity.User `json:"users"`
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response.Users, nil
 }
