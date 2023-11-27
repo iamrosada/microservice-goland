@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -37,7 +38,7 @@ func (p *PromoHandlers) SetupRouter(router *gin.Engine) {
 	router.POST("/promo/create", p.CreatePromoHandler)
 	router.POST("/promo/:id/codes", p.PromoCodeHandler)
 	router.POST("/promo/:id/apply_users", p.ApplyPromoUsersHandler)
-	// router.GET("/promo/:id/users", p.GetPromoUsersHandler)
+	router.GET("/promo/:id/users", p.GetAppliedUsersHandler)
 
 	router.POST("/promo/:id/apply_all", p.ApplyPromoToAllUsersHandler)
 }
@@ -208,9 +209,8 @@ func (p *PromoHandlers) ApplyPromoToAllUsersHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert request to JSON"})
 		return
 	}
-
 	// Отправляем запрос на применение промо-акции ко всем пользователям
-	url := fmt.Sprintf("http://localhost:8000/api/users/promo/%d/apply", promoID)
+	url := fmt.Sprintf("http://localhost:8000/api/users/promo/%d/applied", promoID)
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		log.Printf("Error sending request to user microservice: %v", err)
@@ -251,4 +251,63 @@ func (p *PromoHandlers) fetchUsersFromUserMicroservice(url string) ([]entity.Use
 	}
 
 	return response.Users, nil
+}
+func (p *PromoHandlers) GetAppliedUsersHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	promoID, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid promotion ID"})
+		return
+	}
+
+	// Assuming that fetchUsersFromUserMicroservice returns a slice of UserIDs
+	users, err := p.fetchUsersFromUserAppliedMicroservice(fmt.Sprintf("http://localhost:8000/api/users/promo/%s/applied", id))
+	log.Printf("users: %+v", users)
+
+	if err != nil {
+		log.Printf("Error fetching users from user microservice: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users from user microservice"})
+		return
+	}
+
+	var userIDs []int
+	for _, user := range users {
+		userIDs = append(userIDs, int(user))
+	}
+
+	log.Printf("promoID: %d", promoID)
+	log.Printf("userIDs: %+v", userIDs)
+
+	// Respond with applied user IDs
+	c.JSON(http.StatusOK, gin.H{"user_ids": userIDs})
+}
+
+func (p *PromoHandlers) fetchUsersFromUserAppliedMicroservice(url string) ([]int, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Failed to fetch users, status: %d", resp.StatusCode)
+	}
+
+	// Log the raw response body for debugging
+	rawBody, _ := io.ReadAll(resp.Body)
+	log.Printf("Raw Response Body: %s", string(rawBody))
+
+	var response struct {
+		UserIDs []int `json:"user_ids"`
+	}
+
+	err = json.Unmarshal(rawBody, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("userIDs: %+v", response.UserIDs)
+
+	return response.UserIDs, nil
 }
