@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -47,31 +45,6 @@ func (p *PromoHandlers) SetupRouter(router *gin.Engine) {
 	// router.POST("/promo/:id/apply_all", p.ApplyPromoAllHandler)
 }
 
-func fetchUsersForPromo(url string) (map[string][]uint, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to perform GET request: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Failed to fetch users for promo. Status: %d, Body: %s", resp.StatusCode, body)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to read response body: %v", err)
-	}
-
-	var result map[string][]uint
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal JSON: %v", err)
-	}
-
-	return result, nil
-}
-
 func (p *PromoHandlers) ApplyPromoUsersHandler(c *gin.Context) {
 	id := c.Param("id")
 	promoID, err := strconv.ParseInt(id, 10, 64)
@@ -90,40 +63,33 @@ func (p *PromoHandlers) ApplyPromoUsersHandler(c *gin.Context) {
 	}
 
 	// Call the user microservice to apply the promo to specific users
-	url := fmt.Sprintf("%s/api/users/promo_type/%d/available", userMicroserviceURL, promoID)
-	usersIDs, err := fetchUsersForPromo(url)
+	url := fmt.Sprintf("%s/api/users/promo/%d/apply", userMicroserviceURL, promoID)
+	// Convertendo a estrutura para JSON
+	reqBody, err := json.Marshal(request)
 	if err != nil {
-		log.Printf("Error fetching users for promo: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users for promo"})
+		log.Printf("Error converting request to JSON: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to convert request to JSON"})
 		return
 	}
 
-	for _, userID := range usersIDs["users_id"] {
-		randomNumber := rand.Intn(9) + 1
-		appliedPromotion := entity.UserPromotion{
-			PromotionID: uint(promoID),
-			UserID:      uint(userID),
-			Type:        int(randomNumber),
-		}
+	// Enviando a solicitação HTTP POST
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(reqBody))
+	if err != nil {
+		log.Printf("Error sending request to user microservice: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send request to user microservice"})
+		return
+	}
 
-		// Save the applied promotion to the user microservice
-		saveURL := fmt.Sprintf("%s/api/users/promo/%d/apply", userMicroserviceURL, promoID)
-		reqBody, _ := json.Marshal(appliedPromotion)
-		resp, err := http.Post(saveURL, "application/json", bytes.NewBuffer(reqBody))
+	defer resp.Body.Close()
 
-		if err != nil {
-			log.Printf("Error saving applied promotion: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save applied promotion"})
-			return
-		}
+	// Adicionando mais logs
+	log.Printf("Request sent to user microservice. Promo ID: %d, User IDs: %v", promoID, request.UserIDs)
+	log.Printf("Response status: %d", resp.StatusCode)
 
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			log.Printf("Unexpected status code when saving applied promotion: %d", resp.StatusCode)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save applied promotion"})
-			return
-		}
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Unexpected status code when sending request: %d", resp.StatusCode)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply promotion to specified users"})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Promo applied to specified users"})
