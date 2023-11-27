@@ -28,10 +28,7 @@ func NewPromoHandlers(useCase *usecase.PromotionUsecaseImpl) *PromoHandlers {
 }
 
 func (p *PromoHandlers) SetupRouter(router *gin.Engine) {
-	// Use the provided router instead of creating a new one
-	// r := gin.Default() // Don't create a new router; use the provided one
 
-	// Health check endpoint
 	router.GET("/check_alive", func(c *gin.Context) {
 		c.Status(http.StatusOK)
 	})
