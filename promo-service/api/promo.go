@@ -36,11 +36,17 @@ func (p *PromoHandlers) SetupRouter(router *gin.Engine) {
 
 	// Uncommented routes
 	router.POST("/promo/create", p.CreatePromoHandler)
+
 	router.POST("/promo/:id/codes", p.PromoCodeHandler)
+
 	router.POST("/promo/:id/apply_users", p.ApplyPromoUsersHandler)
+
 	router.GET("/promo/:id/users", p.GetAppliedUsersHandler)
 
 	router.POST("/promo/:id/apply_all", p.ApplyPromoToAllUsersHandler)
+
+	router.GET("/promo/:id", p.GetPromoWithPromoCodeHandler)
+
 }
 
 func (p *PromoHandlers) ApplyPromoUsersHandler(c *gin.Context) {
@@ -310,4 +316,45 @@ func (p *PromoHandlers) fetchUsersFromUserAppliedMicroservice(url string) ([]int
 	log.Printf("userIDs: %+v", response.UserIDs)
 
 	return response.UserIDs, nil
+}
+
+func (p *PromoHandlers) GetPromoWithPromoCodeHandler(c *gin.Context) {
+	id := c.Param("id")
+
+	promoID, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid promotion ID"})
+		return
+	}
+
+	// Получаем информацию о промо-акции по ID
+	promotion, err := p.PromoUseCase.GetPromotionByID(uint(promoID))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve promotion"})
+		return
+	}
+
+	// Получаем промо-код по ID промо-акции
+	promoCode, err := p.PromoUseCase.GetCodeByID(uint(promoID))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve promo code"})
+		return
+	}
+
+	// Handle the case when promoCode is a pointer to a single code
+	// codes := promoCode.Codes
+
+	// Build the response
+	response := gin.H{
+		"promo_id":    promotion.ID,
+		"name":        promotion.Name,
+		"slug":        promotion.Slug,
+		"url":         promotion.URL,
+		"description": promotion.Description,
+		"type":        promotion.Type,
+		"codes":       promoCode,
+	}
+
+	// Send the response
+	c.JSON(http.StatusOK, response)
 }
