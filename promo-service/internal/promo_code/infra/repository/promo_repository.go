@@ -3,6 +3,7 @@ package repository
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 
 	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/entity"
@@ -46,6 +47,27 @@ func (r *PromoRepositoryImpl) FindByID(id uint) (*entity.Promotion, error) {
 	}
 	return &promo, nil
 }
+func (r *PromoRepositoryImpl) FindCodesByPromotionID(promotionID uint) ([]string, error) {
+
+	var codes []string
+
+	// Executando uma query SQL personalizada para selecionar os valores da coluna "Codes"
+	err := r.DB.Raw("SELECT Codes FROM codes_promos WHERE promotion_id = ?", promotionID).Pluck("Codes", &codes).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return codes, nil
+}
+
+func (r *PromoRepositoryImpl) FindAllCodes() ([]entity.CodesPromo, error) {
+	var codes []entity.CodesPromo
+	err := r.DB.Find(&codes).Error
+	if err != nil {
+		return nil, err
+	}
+	return codes, nil
+}
 
 func (r *PromoRepositoryImpl) AddCodes(id uint, codes []string) error {
 	// Find the promotion by ID
@@ -54,7 +76,7 @@ func (r *PromoRepositoryImpl) AddCodes(id uint, codes []string) error {
 		return err
 	}
 
-	// Assuming that there is a one-to-many relationship between Promotion and Code
+	// Assuming that there is a one-to-many relationship between Promotion and CodesPromo
 	// Create a map to check for duplicate codes
 	codeMap := make(map[string]bool)
 
@@ -71,9 +93,12 @@ func (r *PromoRepositoryImpl) AddCodes(id uint, codes []string) error {
 
 		// Add the lowercase code to the map
 		codeMap[lowercaseCode] = true
+		newID := generateNewID()
 
-		// Create the Code entity
-		code := entity.Code{
+		// Assign the generated ID to the promotion
+		// Create the CodesPromo entity
+		code := entity.CodesPromo{
+			ID:          newID,
 			Codes:       []string{codeValue},
 			PromotionID: promo.ID, // Assuming Promotion has an ID field
 		}
@@ -85,4 +110,13 @@ func (r *PromoRepositoryImpl) AddCodes(id uint, codes []string) error {
 	}
 
 	return nil
+}
+
+func (r *PromoRepositoryImpl) CreateUserThatWillUsePromo(promo *entity.UserPromotion) error {
+	return r.DB.Create(&promo).Error
+}
+
+func generateNewID() uint {
+
+	return uint(rand.Uint32())
 }
