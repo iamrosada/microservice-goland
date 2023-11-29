@@ -1,34 +1,20 @@
-version: "3.9"
+# version: "3.9"
 
-services:
-  postgres:
-    image: postgres:12
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    ports:
-      - "5434:5432"
-    volumes:
-      - data:/var/lib/postgresql/data
+# services:
+#   user-service:
+#     build:
+#       context: .
+#       dockerfile: user-service/Dockerfile
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - ./shared:/app/shared
 
-  pg-admin:
-    image: dpage/pgadmin4:6
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@email.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
-      - PGADMIN_LISTEN_PORT=5050
-    ports:
-      - "5050:5050"
-
-  user-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    # command: ["./wait-for-port.sh", "pg-admin", "5050", "./main"]
-    ports:
-      - "8080:8080"
-    depends_on:
-      - pg-admin
-
-volumes:
-  data:
+#   promo-service:
+#     build:
+#       context: .
+#       dockerfile: promo-service/Dockerfile
+#     ports:
+#       - "8080:8080"
+#     volumes:
+#       - ./shared:/app/shared
