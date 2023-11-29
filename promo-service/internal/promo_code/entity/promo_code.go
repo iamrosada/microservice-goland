@@ -5,7 +5,7 @@ type Serializable interface {
 	AfterFind() error
 }
 
-type Code struct {
+type CodesPromo struct {
 	ID          uint     `json:"id"`
 	Codes       []string `gorm:"type:jsonb" json:"codes"`
 	PromotionID uint     `json:"promotion_id"`
