@@ -3,6 +3,7 @@ package repository
 import (
 	"fmt"
 	"math/rand"
+	"strconv"
 
 	"github.com/iamrosada/microservice-goland/user-service/internal/user/entity"
 	"gorm.io/gorm"
@@ -87,6 +88,7 @@ func (r *PromotionRepositoryPostgres) ApplyPromotion(promoID uint, userIDs []int
 			UserID:      uint(userID),
 			Type:        int(randomNumber),
 		}
+		fmt.Printf("%s ", strconv.FormatUint(uint64(userID), 10))
 
 		// Save the applied promotion to the database
 		if err := r.DB.Create(&appliedPromotion).Error; err != nil {
