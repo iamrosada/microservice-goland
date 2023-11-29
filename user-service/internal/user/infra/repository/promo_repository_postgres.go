@@ -1,9 +1,10 @@
 package repository
 
 import (
+	"encoding/json"
 	"fmt"
-	"math/rand"
-	"strconv"
+	"log"
+	"net/http"
 
 	"github.com/iamrosada/microservice-goland/user-service/internal/user/entity"
 	"github.com/iamrosada/microservice-goland/user-service/internal/user/infra/util"
@@ -70,39 +71,54 @@ func (r *PromotionRepositoryPostgres) GetAppliedUsers(promoID uint) ([]int, erro
 }
 
 func (r *PromotionRepositoryPostgres) ApplyPromotion(promoID uint, userIDs []int) error {
-	randomNumber := rand.Intn(9) + 1
+	promoTypeFromOtherMicroservice, err := fetchPromoTypeFromMicroservice(fmt.Sprintf("http://localhost:8080/promo/%d", promoID))
+	if err != nil {
+		log.Printf("Error fetching promo type: %v", err)
+		return fmt.Errorf("failed to fetch promo type: %v", err)
+	}
 
-	// users, err := fetchUsersFromUserAppliedMicroservice(fmt.Sprintf("http://localhost:8000/api/users/promo/%s/applied", id))
-	// log.Printf("users: %+v", users)
-
-	// if err != nil {
-	// 	log.Printf("Error fetching users from user microservice: %v", err)
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users from user microservice"})
-	// 	return
-	// }
-
-	// var userIDs []int
-	// for _, user := range users {
-	// 	userIDs = append(userIDs, int(user))
-	// }
+	log.Printf("Promo type from microservice: %d", promoTypeFromOtherMicroservice)
 
 	for _, userID := range userIDs {
 		appliedPromotion := entity.UserPromotion{
 			ID:          util.GenerateNewID(),
 			PromotionID: promoID,
 			UserID:      uint(userID),
-			Type:        int(randomNumber),
+			Type:        promoTypeFromOtherMicroservice,
 		}
-		fmt.Printf("%s ", strconv.FormatUint(uint64(userID), 10))
+
+		log.Printf("Applying promotion for user %d with promo type %d", userID, promoTypeFromOtherMicroservice)
 
 		if err := r.DB.Create(&appliedPromotion).Error; err != nil {
-			return err
+			log.Printf("Error applying promotion for user %d: %v", userID, err)
+			return fmt.Errorf("failed to apply promotion for user %d: %v", userID, err)
 		}
 	}
 
 	return nil
 }
 
-func fetchUsersFromUserAppliedMicroservice(s string) {
-	panic("unimplemented")
+func fetchPromoTypeFromMicroservice(url string) (int, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("Failed to fetch promotion, status: %d", resp.StatusCode)
+	}
+
+	var response struct {
+		Type int `json:"type"`
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&response)
+	if err != nil {
+		return 0, err
+	}
+
+	fmt.Println("Retorno da função fetchPromoTypeFromMicroservice:", response.Type)
+
+	return response.Type, nil
 }
