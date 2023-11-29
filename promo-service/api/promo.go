@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/entity"
+	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/infra/util"
 	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/usecase"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +34,6 @@ func (p *PromoHandlers) SetupRouter(router *gin.Engine) {
 		c.Status(http.StatusOK)
 	})
 
-	// Uncommented routes
 	router.POST("/promo/create", p.CreatePromoHandler)
 
 	router.POST("/promo/:id/codes", p.PromoCodeHandler)
@@ -197,7 +196,7 @@ func (p *PromoHandlers) ApplyPromoToAllUsersHandler(c *gin.Context) {
 	}
 
 	// Получаем список пользователей из микросервиса пользователей
-	users, err := p.fetchUsersFromUserMicroservice("http://localhost:8000/api/users")
+	users, err := util.FetchUsersFromUserMicroservice("http://localhost:8000/api/users")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users from user microservice"})
 		return
@@ -239,28 +238,6 @@ func (p *PromoHandlers) ApplyPromoToAllUsersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "New promotion applied to all users"})
 }
 
-func (p *PromoHandlers) fetchUsersFromUserMicroservice(url string) ([]entity.User, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Failed to fetch users, status: %d", resp.StatusCode)
-	}
-
-	var response struct {
-		Users []entity.User `json:"users"`
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(&response)
-	if err != nil {
-		return nil, err
-	}
-
-	return response.Users, nil
-}
 func (p *PromoHandlers) GetAppliedUsersHandler(c *gin.Context) {
 	id := c.Param("id")
 
@@ -270,7 +247,7 @@ func (p *PromoHandlers) GetAppliedUsersHandler(c *gin.Context) {
 		return
 	}
 
-	users, err := p.fetchUsersFromUserAppliedMicroservice(fmt.Sprintf("http://localhost:8000/api/users/promo/%s/applied", id))
+	users, err := util.FetchUsersFromUserAppliedMicroservice(fmt.Sprintf("http://localhost:8000/api/users/promo/%s/applied", id))
 	log.Printf("users: %+v", users)
 
 	if err != nil {
@@ -288,34 +265,6 @@ func (p *PromoHandlers) GetAppliedUsersHandler(c *gin.Context) {
 	log.Printf("userIDs: %+v", userIDs)
 
 	c.JSON(http.StatusOK, gin.H{"user_ids": userIDs})
-}
-
-func (p *PromoHandlers) fetchUsersFromUserAppliedMicroservice(url string) ([]int, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Failed to fetch users, status: %d", resp.StatusCode)
-	}
-
-	rawBody, _ := io.ReadAll(resp.Body)
-	log.Printf("Raw Response Body: %s", string(rawBody))
-
-	var response struct {
-		UserIDs []int `json:"user_ids"`
-	}
-
-	err = json.Unmarshal(rawBody, &response)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("userIDs: %+v", response.UserIDs)
-
-	return response.UserIDs, nil
 }
 
 func (p *PromoHandlers) GetPromoWithPromoCodeHandler(c *gin.Context) {

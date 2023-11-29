@@ -1,10 +1,8 @@
 package repository
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 
 	"github.com/iamrosada/microservice-goland/user-service/internal/user/entity"
 	"github.com/iamrosada/microservice-goland/user-service/internal/user/infra/util"
@@ -32,7 +30,7 @@ func (r *PromotionRepositoryPostgres) GetAvailableUsers(promoType int) ([]int, e
 
 	var usersWithoutPromotionIDs []int
 	for _, user := range allUsers {
-		if !containsUserPromotion(usersPromotion, int(user.ID)) {
+		if !util.ContainsUserPromotion(usersPromotion, int(user.ID)) {
 			usersWithoutPromotionIDs = append(usersWithoutPromotionIDs, int(user.ID))
 		}
 	}
@@ -44,14 +42,6 @@ func (r *PromotionRepositoryPostgres) GetAvailableUsers(promoType int) ([]int, e
 	return usersWithoutPromotionIDs, nil
 }
 
-func containsUserPromotion(usersPromotion []entity.UserPromotion, userID int) bool {
-	for _, userPromotion := range usersPromotion {
-		if int(userPromotion.UserID) == userID {
-			return true
-		}
-	}
-	return false
-}
 func (r *PromotionRepositoryPostgres) GetAppliedUsers(promoID uint) ([]int, error) {
 	var appliedUsers []entity.UserPromotion
 	if err := r.DB.Find(&appliedUsers, "promotion_id = ?", promoID).Error; err != nil {
@@ -71,7 +61,7 @@ func (r *PromotionRepositoryPostgres) GetAppliedUsers(promoID uint) ([]int, erro
 }
 
 func (r *PromotionRepositoryPostgres) ApplyPromotion(promoID uint, userIDs []int) error {
-	promoTypeFromOtherMicroservice, err := fetchPromoTypeFromMicroservice(fmt.Sprintf("http://localhost:8080/promo/%d", promoID))
+	promoTypeFromOtherMicroservice, err := util.FetchPromoTypeFromMicroservice(fmt.Sprintf("http://localhost:8080/promo/%d", promoID))
 	if err != nil {
 		log.Printf("Error fetching promo type: %v", err)
 		return fmt.Errorf("failed to fetch promo type: %v", err)
@@ -96,29 +86,4 @@ func (r *PromotionRepositoryPostgres) ApplyPromotion(promoID uint, userIDs []int
 	}
 
 	return nil
-}
-
-func fetchPromoTypeFromMicroservice(url string) (int, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("Failed to fetch promotion, status: %d", resp.StatusCode)
-	}
-
-	var response struct {
-		Type int `json:"type"`
-	}
-
-	err = json.NewDecoder(resp.Body).Decode(&response)
-	if err != nil {
-		return 0, err
-	}
-
-	fmt.Println("Retorno da função fetchPromoTypeFromMicroservice:", response.Type)
-
-	return response.Type, nil
 }
