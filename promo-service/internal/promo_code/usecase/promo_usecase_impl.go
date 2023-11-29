@@ -1,9 +1,8 @@
 package usecase
 
 import (
-	"math/rand"
-
 	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/entity"
+	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/infra/util"
 )
 
 type PromotionUsecaseImpl struct {
@@ -17,9 +16,7 @@ func NewPromoUsecase(repo entity.PromotionRepository) *PromotionUsecaseImpl {
 }
 
 func (u *PromotionUsecaseImpl) CreatePromo(promotion *entity.Promotion) error {
-	newID := generateNewID()
-
-	// Assign the generated ID to the promotion
+	newID := util.GenerateNewID()
 	promotion.ID = newID
 	return u.PromotionRepository.Create(promotion)
 }
@@ -36,19 +33,6 @@ func (u *PromotionUsecaseImpl) AddCodesToPromotion(id uint, codes []string) erro
 	return u.PromotionRepository.AddCodes(id, codes)
 }
 
-func (u *PromotionUsecaseImpl) ApplyPromotionToAll(id uint) error {
-	return u.PromotionRepository.ApplyAll(id)
-}
-
-func (u *PromotionUsecaseImpl) ApplyPromotionToUsers(id uint, userIds []int) error {
-	return u.PromotionRepository.ApplyToUsers(id, userIds)
-}
-
-func (u *PromotionUsecaseImpl) GetAppliedUsers(id uint) ([]uint, error) {
-	return u.PromotionRepository.GetAppliedUsers(id)
-}
-
-func generateNewID() uint {
-
-	return uint(rand.Uint32())
+func (u *PromotionUsecaseImpl) GetAllPromos() ([]*entity.Promotion, error) {
+	return u.PromotionRepository.FindAllPromos()
 }

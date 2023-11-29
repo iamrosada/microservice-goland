@@ -3,29 +3,14 @@ package repository
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/entity"
+	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/infra/util"
 	"gorm.io/gorm"
 )
 
 type PromoRepositoryImpl struct {
 	DB *gorm.DB
-}
-
-// ApplyAll implements entity.PromotionRepository.
-func (*PromoRepositoryImpl) ApplyAll(id uint) error {
-	panic("unimplemented")
-}
-
-// ApplyToUsers implements entity.PromotionRepository.
-func (*PromoRepositoryImpl) ApplyToUsers(id uint, userIds []int) error {
-	panic("unimplemented")
-}
-
-// GetAppliedUsers implements entity.PromotionRepository.
-func (*PromoRepositoryImpl) GetAppliedUsers(id uint) ([]uint, error) {
-	panic("unimplemented")
 }
 
 func NewPromoRepository(db *gorm.DB) *PromoRepositoryImpl {
@@ -56,6 +41,15 @@ func (r *PromoRepositoryImpl) FindCodesByPromotionID(promotionID uint) ([]string
 	return codes, nil
 }
 
+func (r *PromoRepositoryImpl) FindAllPromos() ([]*entity.Promotion, error) {
+	var promotions []*entity.Promotion
+	err := r.DB.Table("promotions").Find(&promotions).Error
+	if err != nil {
+		return nil, err
+	}
+	return promotions, nil
+}
+
 func (r *PromoRepositoryImpl) AddCodes(id uint, codes []string) error {
 	promo, err := r.FindByID(id)
 	if err != nil {
@@ -71,7 +65,7 @@ func (r *PromoRepositoryImpl) AddCodes(id uint, codes []string) error {
 		}
 
 		codeMap[lowercaseCode] = true
-		newID := generateNewID()
+		newID := util.GenerateNewID()
 
 		code := entity.CodesPromo{
 			ID:          newID,
@@ -89,8 +83,4 @@ func (r *PromoRepositoryImpl) AddCodes(id uint, codes []string) error {
 
 func (r *PromoRepositoryImpl) CreateUserThatWillUsePromo(promo *entity.UserPromotion) error {
 	return r.DB.Create(promo).Error
-}
-
-func generateNewID() uint {
-	return uint(time.Now().UnixNano())
 }

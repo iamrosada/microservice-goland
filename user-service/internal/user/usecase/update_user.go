@@ -28,7 +28,6 @@ func (u *UpdateUserUseCase) Execute(input UpdateUserInputDto) (*UpdateUserOutput
 		return nil, err
 	}
 
-	// Update the existing User with the new information
 	existingUser.Update(
 		input.Name,
 		input.Email,

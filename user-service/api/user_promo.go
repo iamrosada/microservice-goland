@@ -35,8 +35,6 @@ func (p *UserPromoHandlers) GetAvailableUsersHandler(c *gin.Context) {
 	println(promoType)
 	Int32Val, _ := strconv.ParseInt(promoType, 10, 32)
 
-	// Validate promoType and other input as needed
-
 	users, err := p.UserPromoUseCase.GetAvailableUsers(int(Int32Val))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -49,29 +47,24 @@ func (p *UserPromoHandlers) GetAvailableUsersHandler(c *gin.Context) {
 func (p *UserPromoHandlers) GetAppliedUsersHandler(c *gin.Context) {
 	promoID := c.Param("id")
 
-	// Validate promoID
 	uInt32Val, err := strconv.ParseUint(promoID, 10, 32)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid promoID"})
 		return
 	}
 
-	// Retrieve applied users
 	users, err := p.UserPromoUseCase.GetAppliedUsers(uint(uInt32Val))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Respond with applied user IDs
 	c.JSON(http.StatusOK, gin.H{"user_ids": users})
 }
 
 func (p *UserPromoHandlers) ApplyPromotionHandler(c *gin.Context) {
 	promoID := c.Param("id")
 	uInt32Val, err := strconv.ParseUint(promoID, 10, 32)
-
-	// Validate promoID and other input as needed
 
 	var request struct {
 		UserIDs []int `json:"user_ids"`

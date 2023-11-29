@@ -27,9 +27,8 @@ func (u *GetUserByIDUseCase) Execute(input GetUserByIDInputDto) (*GetUserByIDOut
 	}
 
 	return &GetUserByIDOutputDto{
-		ID:   User.ID,
-		Name: User.Name,
-
+		ID:    User.ID,
+		Name:  User.Name,
 		Email: User.Email,
 	}, nil
 }

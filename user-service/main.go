@@ -47,7 +47,7 @@ func main() {
 		panic(err)
 	}
 
-	err = gormDB.AutoMigrate(&entity.UserPromotion{}, &entity.Promotion{}, &entity.User{})
+	err = gormDB.AutoMigrate(&entity.UserPromotion{}, &entity.User{})
 	if err != nil {
 		panic(err)
 	}

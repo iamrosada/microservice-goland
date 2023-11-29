@@ -1,11 +1,5 @@
 package entity
 
-type Promotion struct {
-	ID         uint   `json:"id"`
-	CodesPromo string `json:"code"`
-}
-
-// UserPromotion represents the relation between users and promotional codes
 type UserPromotion struct {
 	ID          uint `json:"id"`
 	UserID      uint `json:"user_id"`

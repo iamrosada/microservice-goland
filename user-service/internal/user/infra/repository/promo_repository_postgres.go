@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/iamrosada/microservice-goland/user-service/internal/user/entity"
+	"github.com/iamrosada/microservice-goland/user-service/internal/user/infra/util"
 	"gorm.io/gorm"
 )
 
@@ -18,19 +19,16 @@ func NewPromotionRepositoryPostgres(db *gorm.DB) *PromotionRepositoryPostgres {
 }
 
 func (r *PromotionRepositoryPostgres) GetAvailableUsers(promoType int) ([]int, error) {
-	// 1. Consultar o banco de dados para obter IDs de usuários que receberam a promoção
 	var usersPromotion []entity.UserPromotion
 	if err := r.DB.Where("type != ?", promoType).Find(&usersPromotion).Error; err != nil {
 		return nil, err
 	}
 
-	// 2. Consultar o banco de dados para obter todos os IDs de usuários
 	var allUsers []entity.User
 	if err := r.DB.Find(&allUsers).Error; err != nil {
 		return nil, err
 	}
 
-	// 3. Identificar os IDs dos usuários que não receberam a promoção
 	var usersWithoutPromotionIDs []int
 	for _, user := range allUsers {
 		if !containsUserPromotion(usersPromotion, int(user.ID)) {
@@ -38,17 +36,13 @@ func (r *PromotionRepositoryPostgres) GetAvailableUsers(promoType int) ([]int, e
 		}
 	}
 
-	// 4. Verificar se há usuários disponíveis
 	if len(usersWithoutPromotionIDs) == 0 {
-		// Não há usuários disponíveis
 		return nil, nil
 	}
 
-	// 5. Retornar a lista final de usuários que ainda podem receber a promoção
 	return usersWithoutPromotionIDs, nil
 }
 
-// containsUserPromotion verifica se um usuário já recebeu uma determinada promoção
 func containsUserPromotion(usersPromotion []entity.UserPromotion, userID int) bool {
 	for _, userPromotion := range usersPromotion {
 		if int(userPromotion.UserID) == userID {
@@ -58,18 +52,15 @@ func containsUserPromotion(usersPromotion []entity.UserPromotion, userID int) bo
 	return false
 }
 func (r *PromotionRepositoryPostgres) GetAppliedUsers(promoID uint) ([]int, error) {
-	// Consultar o banco de dados para obter IDs de usuários aos quais o código promocional foi aplicado
 	var appliedUsers []entity.UserPromotion
 	if err := r.DB.Find(&appliedUsers, "promotion_id = ?", promoID).Error; err != nil {
 		return nil, err
 	}
 
-	// Verificar se nenhum usuário foi encontrado
 	if len(appliedUsers) == 0 {
 		return nil, fmt.Errorf("no users found with promotion applied for promoID %d", promoID)
 	}
 
-	// Extrair os IDs dos usuários
 	var appliedUserIDs []int
 	for _, appliedUser := range appliedUsers {
 		appliedUserIDs = append(appliedUserIDs, int(appliedUser.UserID))
@@ -79,22 +70,39 @@ func (r *PromotionRepositoryPostgres) GetAppliedUsers(promoID uint) ([]int, erro
 }
 
 func (r *PromotionRepositoryPostgres) ApplyPromotion(promoID uint, userIDs []int) error {
-	// Iterate over user IDs and apply the promotion to each user
 	randomNumber := rand.Intn(9) + 1
+
+	// users, err := fetchUsersFromUserAppliedMicroservice(fmt.Sprintf("http://localhost:8000/api/users/promo/%s/applied", id))
+	// log.Printf("users: %+v", users)
+
+	// if err != nil {
+	// 	log.Printf("Error fetching users from user microservice: %v", err)
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch users from user microservice"})
+	// 	return
+	// }
+
+	// var userIDs []int
+	// for _, user := range users {
+	// 	userIDs = append(userIDs, int(user))
+	// }
 
 	for _, userID := range userIDs {
 		appliedPromotion := entity.UserPromotion{
+			ID:          util.GenerateNewID(),
 			PromotionID: promoID,
 			UserID:      uint(userID),
 			Type:        int(randomNumber),
 		}
 		fmt.Printf("%s ", strconv.FormatUint(uint64(userID), 10))
 
-		// Save the applied promotion to the database
 		if err := r.DB.Create(&appliedPromotion).Error; err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func fetchUsersFromUserAppliedMicroservice(s string) {
+	panic("unimplemented")
 }

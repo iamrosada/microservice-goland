@@ -46,6 +46,7 @@ func (p *PromoHandlers) SetupRouter(router *gin.Engine) {
 	router.POST("/promo/:id/apply_all", p.ApplyPromoToAllUsersHandler)
 
 	router.GET("/promo/:id", p.GetPromoWithPromoCodeHandler)
+	router.GET("/promos", p.GetAllPromosHandler)
 
 }
 
@@ -66,9 +67,7 @@ func (p *PromoHandlers) ApplyPromoUsersHandler(c *gin.Context) {
 		return
 	}
 
-	// Call the user microservice to apply the promo to specific users
 	url := fmt.Sprintf("%s/api/users/promo/%d/apply", userMicroserviceURL, promoID)
-	// Convertendo a estrutura para JSON
 	reqBody, err := json.Marshal(request)
 	if err != nil {
 		log.Printf("Error converting request to JSON: %v", err)
@@ -76,7 +75,6 @@ func (p *PromoHandlers) ApplyPromoUsersHandler(c *gin.Context) {
 		return
 	}
 
-	// Enviando a solicitação HTTP POST
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		log.Printf("Error sending request to user microservice: %v", err)
@@ -86,7 +84,6 @@ func (p *PromoHandlers) ApplyPromoUsersHandler(c *gin.Context) {
 
 	defer resp.Body.Close()
 
-	// Adicionando mais logs
 	log.Printf("Request sent to user microservice. Promo ID: %d, User IDs: %v", promoID, request.UserIDs)
 	log.Printf("Response status: %d", resp.StatusCode)
 
@@ -100,16 +97,11 @@ func (p *PromoHandlers) ApplyPromoUsersHandler(c *gin.Context) {
 }
 
 func (p *PromoHandlers) PromoCodeHandler(c *gin.Context) {
-	// Parse and validate promoID
 	promoID := c.Param("id")
 	uInt32Val, err := strconv.ParseUint(promoID, 10, 32)
 
-	// Validate other input parameters as needed
-
-	// Log the received request
 	log.Printf("Received request to add codes to promotion with ID %d", uInt32Val)
 
-	// Bind JSON request
 	var request struct {
 		CodesPromo []string `json:"codes"`
 	}
@@ -118,13 +110,11 @@ func (p *PromoHandlers) PromoCodeHandler(c *gin.Context) {
 		return
 	}
 
-	// Check for zero-length codes
 	if len(request.CodesPromo) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No codes provided"})
 		return
 	}
 
-	// Convert codes to lowercase for case-insensitive duplicate check
 	lowercaseCodes := make(map[string]bool)
 	for _, code := range request.CodesPromo {
 		lowercaseCode := strings.ToLower(code)
@@ -135,14 +125,12 @@ func (p *PromoHandlers) PromoCodeHandler(c *gin.Context) {
 		lowercaseCodes[lowercaseCode] = true
 	}
 
-	// Handle the use case
 	err = p.PromoUseCase.AddCodesToPromotion(uint(uInt32Val), request.CodesPromo)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply promotion", "details": err.Error()})
 		return
 	}
 
-	// Respond to the client
 	c.JSON(http.StatusOK, gin.H{"message": "Promotion applied successfully"})
 }
 
@@ -176,6 +164,22 @@ func (p *PromoHandlers) CreatePromoHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Promotion created successfully"})
 }
+func (p *PromoHandlers) GetAllPromosHandler(c *gin.Context) {
+	promos, err := p.PromoUseCase.GetAllPromos()
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get promotion", "details": err.Error()})
+		return
+	}
+
+	response := gin.H{
+		"message":    "Promotion got successfully",
+		"promotions": promos,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 func (p *PromoHandlers) ApplyPromoToAllUsersHandler(c *gin.Context) {
 	id := c.Param("id")
 
@@ -235,7 +239,6 @@ func (p *PromoHandlers) ApplyPromoToAllUsersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "New promotion applied to all users"})
 }
 
-// Функция для выполнения запроса к микросервису пользователей
 func (p *PromoHandlers) fetchUsersFromUserMicroservice(url string) ([]entity.User, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -267,7 +270,6 @@ func (p *PromoHandlers) GetAppliedUsersHandler(c *gin.Context) {
 		return
 	}
 
-	// Assuming that fetchUsersFromUserMicroservice returns a slice of UserIDs
 	users, err := p.fetchUsersFromUserAppliedMicroservice(fmt.Sprintf("http://localhost:8000/api/users/promo/%s/applied", id))
 	log.Printf("users: %+v", users)
 
@@ -285,7 +287,6 @@ func (p *PromoHandlers) GetAppliedUsersHandler(c *gin.Context) {
 	log.Printf("promoID: %d", promoID)
 	log.Printf("userIDs: %+v", userIDs)
 
-	// Respond with applied user IDs
 	c.JSON(http.StatusOK, gin.H{"user_ids": userIDs})
 }
 
@@ -300,7 +301,6 @@ func (p *PromoHandlers) fetchUsersFromUserAppliedMicroservice(url string) ([]int
 		return nil, fmt.Errorf("Failed to fetch users, status: %d", resp.StatusCode)
 	}
 
-	// Log the raw response body for debugging
 	rawBody, _ := io.ReadAll(resp.Body)
 	log.Printf("Raw Response Body: %s", string(rawBody))
 
@@ -327,24 +327,18 @@ func (p *PromoHandlers) GetPromoWithPromoCodeHandler(c *gin.Context) {
 		return
 	}
 
-	// Получаем информацию о промо-акции по ID
 	promotion, err := p.PromoUseCase.GetPromotionByID(uint(promoID))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve promotion"})
 		return
 	}
 
-	// Получаем промо-код по ID промо-акции
 	promoCode, err := p.PromoUseCase.GetCodeByID(uint(promoID))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to retrieve promo code"})
 		return
 	}
 
-	// Handle the case when promoCode is a pointer to a single code
-	// codes := promoCode.Codes
-
-	// Build the response
 	response := gin.H{
 		"promo_id":    promotion.ID,
 		"name":        promotion.Name,
@@ -355,6 +349,5 @@ func (p *PromoHandlers) GetPromoWithPromoCodeHandler(c *gin.Context) {
 		"codes":       promoCode,
 	}
 
-	// Send the response
 	c.JSON(http.StatusOK, response)
 }
