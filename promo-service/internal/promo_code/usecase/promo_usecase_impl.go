@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"errors"
 	"math/rand"
 
 	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/entity"
@@ -52,19 +51,4 @@ func (u *PromotionUsecaseImpl) GetAppliedUsers(id uint) ([]uint, error) {
 func generateNewID() uint {
 
 	return uint(rand.Uint32())
-}
-
-func (u *PromotionUsecaseImpl) GetAllCodesPromo() ([]entity.CodesPromo, error) {
-	// Call the repository method to get all CodesPromo items
-	codes, err := u.PromotionRepository.FindAllCodes()
-	if err != nil {
-		return nil, err
-	}
-
-	// Check if the result is not found (optional)
-	if len(codes) == 0 {
-		return nil, errors.New("No CodesPromo found")
-	}
-
-	return codes, nil
 }

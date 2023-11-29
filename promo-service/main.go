@@ -1,50 +1,61 @@
-// main.go
 package main
 
 import (
 	"database/sql"
 	"fmt"
 	"net/http"
-
-	_ "github.com/mattn/go-sqlite3"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/iamrosada/microservice-goland/promo-service/api"
 	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/entity"
 	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/infra/repository"
 	"github.com/iamrosada/microservice-goland/promo-service/internal/promo_code/usecase"
-	_ "github.com/lib/pq"
-	"gorm.io/driver/postgres"
+	_ "github.com/mattn/go-sqlite3" // SQLite driver
+
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func main() {
-	// Set up PostgreSQL database connection
+	// Set up SQLite database connection
 	dbPath := "./db/main.db"
 	sqlDB, err := sql.Open("sqlite3", dbPath)
-	// sqlDB, err := sql.Open("postgres", "postgres://user_promo:password_promo@db_promo:5434/promo?sslmode=disable")
-	// sqlDB, err := sql.Open("postgres", "postgres://user:password@db:5435/users?sslmode=disable")
-
 	if err != nil {
 		panic(err)
 	}
 	defer sqlDB.Close()
 
+	_, err = os.Stat(dbPath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll("./db", os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+
+		file, err := os.Create(dbPath)
+		if err != nil {
+			panic(err)
+		}
+		file.Close()
+	}
+
 	// Create Gorm connection
-	gormDB, err := gorm.Open(postgres.New(postgres.Config{
-		Conn: sqlDB,
-	}), &gorm.Config{})
+	gormDB, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
 
-	err = gormDB.AutoMigrate(&entity.Promotion{}, &entity.Code{})
+	// AutoMigrate ensures that the database schema is up-to-date
+	err = gormDB.AutoMigrate(&entity.Promotion{}, &entity.CodesPromo{})
 	if err != nil {
 		panic(err)
 	}
 
+	// Callback functions for serialization and deserialization
 	gormDB.Callback().Create().Before("gorm:before_create").Register("serializeCodes", serializeCodes)
 	gormDB.Callback().Query().After("gorm:after_query").Register("deserializeCodes", deserializeCodes)
+
 	// Create repositories and use cases
 	promoRepository := repository.NewPromoRepository(gormDB)
 	promoUsingUsecase := usecase.NewPromoUsecase(promoRepository)
@@ -55,7 +66,7 @@ func main() {
 	// Set up Gin router
 	router := gin.Default()
 
-	// Set up user routes
+	// Set up promo routes
 	promoHandlers.SetupRouter(router)
 
 	// Start the server

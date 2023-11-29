@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 
@@ -14,29 +15,34 @@ import (
 
 	"github.com/iamrosada/microservice-goland/user-service/internal/user/usecase"
 	_ "github.com/lib/pq"
-	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
 func main() {
-	// Set up PostgreSQL database connection
-	// sqlDB, err := sql.Open("postgres", "postgres://admin:admin@email.com@pg-admin:5050/db?sslmode=disable")
-
-	// sqlDB, err := sql.Open("postgres", "postgres://user:password@db:5435/users?sslmode=disable")
 	dbPath := "./db/main.db"
 	sqlDB, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		panic(err)
 	}
-	if err != nil {
-		panic(err)
-	}
 	defer sqlDB.Close()
 
+	_, err = os.Stat(dbPath)
+	if os.IsNotExist(err) {
+		err = os.MkdirAll("./db", os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+
+		file, err := os.Create(dbPath)
+		if err != nil {
+			panic(err)
+		}
+		file.Close()
+	}
+
 	// Create Gorm connection
-	gormDB, err := gorm.Open(postgres.New(postgres.Config{
-		Conn: sqlDB,
-	}), &gorm.Config{})
+	gormDB, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
