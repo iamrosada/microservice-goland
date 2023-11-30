@@ -16,7 +16,7 @@
 
 ### Получение доступных пользователей для применения промокода
 
-**Endpoint**: `GET /users/promo_type/:type/available`
+**Endpoint**: `GET api/users/promo_type/:type/available`
 
 **Respons**:
 
@@ -28,7 +28,7 @@
 
 ### Получение пользователей, к которым применен промокод
 
-**Endpoint**: `GET /users/promo/:id/applied`
+**Endpoint**: `GET api/users/promo/:id/applied`
 
 **Respons**:
 
@@ -40,7 +40,7 @@
 
 ### Применение промокода к пользователям
 
-**Endpoint**: `POST /users/promo/:id/apply`
+**Endpoint**: `POST api/users/promo/:id/apply`
 
 **Request**:
 
@@ -137,6 +137,7 @@
    ```
 
 3. **Запустите сервис пользователей:**
+   Сервис пользователей будет доступен на порту 8000.
 
    ```bash
    cd user-service
@@ -144,9 +145,10 @@
    ```
 
 4. **Откройте новый терминал и запустите сервис промоции:**
+   Сервис promo-service будет доступен на порту 8080.
 
    ```bash
-   cd ../promo-service
+   cd /promo-service
    go run main.go
    ```
 
