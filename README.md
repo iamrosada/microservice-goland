@@ -1,24 +1,24 @@
 # Microservice Readme
 
-## Описание
+## Description
 
-Данный микросервис на языке программирования Golang предназначен для создания и применения промокодов к пользователям. Взаимодействие с данным сервисом предполагает работу с другим сервисом, отвечающим за хранение и управление пользователями.
+This Golang microservice is designed for creating and applying promo codes to users. Interaction with this service involves working with another service responsible for storing and managing users.
 
-## Технологии
+## Technologies
 
-1. **Язык программирования**: Golang
-2. **Фреймворк**: Gin (для обработки HTTP-запросов)
-3. **ORM**: Gorm (для взаимодействия с базой данных PostgreSQL)
-4. **База данных**: PostgreSQL
-5. **Логирование**: Вывод на стандартный поток ввода (stdin)
+1. **Programming Language**: Golang
+2. **Framework**: Gin (for handling HTTP requests)
+3. **ORM**: Gorm (for interacting with PostgreSQL database)
+4. **Database**: PostgreSQL
+5. **Logging**: Output to standard input stream (stdin)
 
-## Доступные API стороннего сервиса пользователей
+## Available API of the External User Service
 
-### Получение доступных пользователей для применения промокода
+### Get available users for applying a promo code
 
 **Endpoint**: `GET api/users/promo_type/:type/available`
 
-**Respons**:
+**Response**:
 
 ```json
 {
@@ -26,11 +26,11 @@
 }
 ```
 
-### Получение пользователей, к которым применен промокод
+### Get users to whom the promo code is applied
 
 **Endpoint**: `GET api/users/promo/:id/applied`
 
-**Respons**:
+**Response**:
 
 ```json
 {
@@ -38,7 +38,7 @@
 }
 ```
 
-### Применение промокода к пользователям
+### Apply promo code to users
 
 **Endpoint**: `POST api/users/promo/:id/apply`
 
@@ -52,15 +52,15 @@
 
 **Response status**: "ok"
 
-## Контракт API микросервиса
+## Microservice API Contract
 
-### Проверка работоспособности
+### Check service's availability
 
 **Endpoint**: `GET /check_alive`
 
 **Response status**: 200
 
-### Создание промокода
+### Create a promo code
 
 **Endpoint**: `POST /promo/create`
 
@@ -68,15 +68,15 @@
 
 ```json
 {
-  "name": "Новое промо",
-  "slug": "new promo",
+  "name": "New Promo",
+  "slug": "new-promo",
   "url": "https://www.example.com/promo",
-  "description": "Воспользуйтесь нашим новым промокодом. Вам понравится.",
+  "description": "Try our new promo code. You'll love it.",
   "type": 1
 }
 ```
 
-### Добавление промокодов к промо
+### Add promo codes to a promo
 
 **Endpoint**: `POST /promo/:id/codes`
 
@@ -88,15 +88,15 @@
 }
 ```
 
-### Получение промо с промокодами
+### Get promo with promo codes
 
 **Endpoint**: `GET /promo/:id`
 
-### Применение промо ко всем подходящим пользователям
+### Apply promo to all eligible users
 
 **Endpoint**: `POST /promo/:id/apply_all`
 
-### Применение промо к указанным пользователям
+### Apply promo to specified users
 
 **Endpoint**: `POST /promo/:id/apply_users`
 
@@ -108,7 +108,7 @@
 }
 ```
 
-### Получение пользователей, для которых применен промокод
+### Get users for whom the promo is applied
 
 **Endpoint**: `GET /promo/:id/users`
 
@@ -120,36 +120,36 @@
 }
 ```
 
-## Запуск микросервиса
+## Running the Microservice
 
-Для запуска микросервиса выполните следующие шаги:
+To run the microservice, follow these steps:
 
-1. **Склонируйте репозиторий:**
+1. **Clone the repository:**
 
    ```bash
    git clone https://github.com/iamrosada/microservice-goland
    ```
 
-2. **Перейдите в директорию микросервиса:**
+2. **Navigate to the microservice directory:**
 
    ```bash
    cd microservice-goland
    ```
 
-3. **Запустите сервис пользователей:**
-   Сервис пользователей будет доступен на порту 8000.
+3. **Run the user service:**
+   The user service will be available on port 8000.
 
    ```bash
    cd user-service
    go run main.go
    ```
 
-4. **Откройте новый терминал и запустите сервис промоции:**
-   Сервис promo-service будет доступен на порту 8080.
+4. **Open a new terminal and run the promo service:**
+   The promo service will be available on port 8080.
 
    ```bash
    cd /promo-service
    go run main.go
    ```
 
-После выполнения этих шагов, микросервис будет доступен по указанным вами эндпоинтам. Убедитесь, что у вас установлен Go на вашей системе перед выполнением этих команд.
+After completing these steps, the microservice will be accessible through the specified endpoints. Make sure you have Go installed on your system before running these commands.
